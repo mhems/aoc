@@ -1,7 +1,6 @@
 from sys import argv, setrecursionlimit
 from collections import namedtuple as nt
 from itertools import groupby
-from datetime import datetime as dt
 from pprint import pprint
 from bisect import bisect_left
 
@@ -43,16 +42,13 @@ R = max(wall.pos.y for wall in walls) - min(wall.pos.y for wall in walls) + 1
 C = max(wall.pos.x for wall in walls) - min(wall.pos.x for wall in walls) + 1
 
 sorted_walls = sorted(walls, key=lambda wall: (wall.pos.y, wall.pos.x))
-grouped_walls = [sorted(g, key=lambda wall: wall.pos.x)
-                 for _, g in groupby(sorted_walls, key=lambda wall: wall.pos.y)]
-#for i, walls in enumerate(grouped_walls):
-#    grouped_walls[i] = [Wall(Pos(wall.pos.x, i), wall.color) for wall in grouped_walls[i]]
-#pprint(grouped_walls)
+grouped_walls = {k: list(g)
+                 for k, g in groupby(sorted_walls, key=lambda wall: wall.pos.y)}
 debug_perimeter = False
 
 if debug_perimeter:
-    for i, walls in enumerate(grouped_walls):
-        print('%4d' % walls[0].pos.y, end=" ")
+    for y, walls in grouped_walls.items():
+        print('%4d' % y, end=" ")
         for c in range(C):
             if any(wall.pos.x == c for wall in walls):
                 print('#', end='')
@@ -61,53 +57,44 @@ if debug_perimeter:
         print()
 
 def find_top_left_corner() -> Pos:
-    next_row = grouped_walls[1]
-    for wall in grouped_walls[0]:
+    first = min(grouped_walls.keys())
+    next_row = grouped_walls[first + 1]
+    for wall in grouped_walls[first]:
         for below_wall in next_row:
             if below_wall.pos.x == wall.pos.x:
                 return Pos(wall.pos.x + 1, wall.pos.y + 1)
 
-def binary_search(walls: [Wall], pos: Pos, low: int, high: int) -> bool:
-    mid = (low + high)//2
-
 def is_wall(pos: Pos) -> bool:
     l = grouped_walls[pos.y]
-    #index = bisect_left(l, pos, key=lambda wall: wall.pos)
-    #theirs = index != len(l) and l[index].pos == pos
-    mine = any(wall.pos.x == pos.x for wall in l)
-    return mine
+    index = bisect_left(l, pos, key=lambda wall: wall.pos)
+    return index != len(l) and l[index].pos == pos
 
-def flood_fill(block: Pos, inner_blocks: [Pos]):
-    if block in inner_blocks:
+def is_inner_block(block: Pos, inner_blocks: {int: [Pos]}):
+    return any(pos.x == block.x for pos in inner_blocks[block.y])
+
+def flood_fill(block: Pos, inner_blocks: {int: [Pos]}):
+    if is_inner_block(block, inner_blocks):
         return
     if not is_wall(block):
-        inner_blocks.append(block)
-    if True: #block.y > 0:
-        up = Pos(block.x, block.y - 1)
-        if not is_wall(up):
-            flood_fill(up, inner_blocks)
-    if True: #block.y < R:
-        down = Pos(block.x, block.y + 1)
-        if not is_wall(down):
-            flood_fill(down, inner_blocks)
-    if True: #block.x > 0:
-        left = Pos(block.x - 1, block.y)
-        if not is_wall(left):
-            flood_fill(left, inner_blocks)
-    if True:#block.x < C:
-        right = Pos(block.x + 1, block.y)
-        if not is_wall(right):
-            flood_fill(right, inner_blocks)
+        inner_blocks[block.y].append(block)
+    up = Pos(block.x, block.y - 1)
+    if not is_wall(up):
+        flood_fill(up, inner_blocks)
+    down = Pos(block.x, block.y + 1)
+    if not is_wall(down):
+        flood_fill(down, inner_blocks)
+    left = Pos(block.x - 1, block.y)
+    if not is_wall(left):
+        flood_fill(left, inner_blocks)
+    right = Pos(block.x + 1, block.y)
+    if not is_wall(right):
+        flood_fill(right, inner_blocks)
 
 corner = find_top_left_corner()
 print('corner', corner)
-inner_blocks = []
+inner_blocks = {y: list() for y in grouped_walls.keys()}
 try:
-    start = dt.now()
     flood_fill(corner, inner_blocks)
-    end = dt.now()
-    print(end, start)
-    print((end - start).total_seconds())
 except RecursionError:
     print('error', len(inner_blocks))
 
@@ -125,5 +112,6 @@ if debug_inner:
                 print('.', end='')
         print()
 
-print('inner', len(inner_blocks))
-print('total', perimeter + len(inner_blocks))
+inner_count = sum(len(blocks) for blocks in inner_blocks.values())
+print('inner', inner_count)
+print('total', perimeter + inner_count)
