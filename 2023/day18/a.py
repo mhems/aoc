@@ -3,6 +3,7 @@ from collections import namedtuple as nt
 from itertools import groupby
 from datetime import datetime as dt
 from pprint import pprint
+from bisect import bisect_left
 
 setrecursionlimit(10000000)
 
@@ -44,6 +45,8 @@ C = max(wall.pos.x for wall in walls) - min(wall.pos.x for wall in walls) + 1
 sorted_walls = sorted(walls, key=lambda wall: (wall.pos.y, wall.pos.x))
 grouped_walls = [sorted(g, key=lambda wall: wall.pos.x)
                  for _, g in groupby(sorted_walls, key=lambda wall: wall.pos.y)]
+#for i, walls in enumerate(grouped_walls):
+#    grouped_walls[i] = [Wall(Pos(wall.pos.x, i), wall.color) for wall in grouped_walls[i]]
 #pprint(grouped_walls)
 debug_perimeter = False
 
@@ -64,26 +67,37 @@ def find_top_left_corner() -> Pos:
             if below_wall.pos.x == wall.pos.x:
                 return Pos(wall.pos.x + 1, wall.pos.y + 1)
 
+def binary_search(walls: [Wall], pos: Pos, low: int, high: int) -> bool:
+    mid = (low + high)//2
+
 def is_wall(pos: Pos) -> bool:
-    return any(wall.pos.x == pos.x for wall in grouped_walls[pos.y])
+    l = grouped_walls[pos.y]
+    #index = bisect_left(l, pos, key=lambda wall: wall.pos)
+    #theirs = index != len(l) and l[index].pos == pos
+    mine = any(wall.pos.x == pos.x for wall in l)
+    return mine
 
 def flood_fill(block: Pos, inner_blocks: [Pos]):
     if block in inner_blocks:
         return
     if not is_wall(block):
         inner_blocks.append(block)
-    up = Pos(block.x, block.y - 1)
-    if not is_wall(up):
-        flood_fill(up, inner_blocks)
-    down = Pos(block.x, block.y + 1)
-    if not is_wall(down):
-        flood_fill(down, inner_blocks)
-    left = Pos(block.x - 1, block.y)
-    if not is_wall(left):
-        flood_fill(left, inner_blocks)
-    right = Pos(block.x + 1, block.y)
-    if not is_wall(right):
-        flood_fill(right, inner_blocks)
+    if True: #block.y > 0:
+        up = Pos(block.x, block.y - 1)
+        if not is_wall(up):
+            flood_fill(up, inner_blocks)
+    if True: #block.y < R:
+        down = Pos(block.x, block.y + 1)
+        if not is_wall(down):
+            flood_fill(down, inner_blocks)
+    if True: #block.x > 0:
+        left = Pos(block.x - 1, block.y)
+        if not is_wall(left):
+            flood_fill(left, inner_blocks)
+    if True:#block.x < C:
+        right = Pos(block.x + 1, block.y)
+        if not is_wall(right):
+            flood_fill(right, inner_blocks)
 
 corner = find_top_left_corner()
 print('corner', corner)
