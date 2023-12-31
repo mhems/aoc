@@ -44,7 +44,7 @@ C = max(wall.pos.x for wall in walls) - min(wall.pos.x for wall in walls) + 1
 sorted_walls = sorted(walls, key=lambda wall: (wall.pos.y, wall.pos.x))
 grouped_walls = {k: list(g)
                  for k, g in groupby(sorted_walls, key=lambda wall: wall.pos.y)}
-debug_perimeter = False
+debug_perimeter = True
 
 if debug_perimeter:
     for y, walls in grouped_walls.items():
