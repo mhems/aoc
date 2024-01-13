@@ -1,8 +1,9 @@
 from sys import argv
-from math import sqrt
+from math import sqrt, prod
 from collections import Counter
 from functools import reduce
 from operator import mul
+from itertools import product
 
 try:
     n = int(argv[1])
@@ -10,8 +11,6 @@ except:
     with open('input.txt') as fp:
         text = fp.read()
     n = int(text.strip())
-
-# i'th house gets 10 * sum(factors)
 
 def primes_up_to(n: int) -> [int]:
     cands = [True] * (n+1)
@@ -43,18 +42,39 @@ def sum_of_factors(n: int):
     pf = prime_factorization(n)
     def p(base: int, exp: int) -> int:
         return sum(base**i for i in range(exp+1))
-    return pf, reduce(mul, (p(b, e) for b, e in pf.items()), 1)
+    return pf, prod(p(b, e) for b, e in pf.items())
 
 root = int(sqrt(n))
-print('sqrt', root)
+print('sqrt of', n, 'is', root)
 primes = primes_up_to(root)
-print(len(primes), 'primes <', root)
-print('sum of factors of', n, 'is', sum_of_factors(n))
+print('there are', len(primes), 'primes <', root)
 
-i = 1
-while True:
-    pf, s = sum_of_factors(i)
-    if s >= n//10:
-        print(i, s, pf)
-        break
-    i += 1
+def part1() -> int:
+    i = 1
+    while True:
+        pf, s = sum_of_factors(i)
+        if s >= n//10:
+            print('house', i, 'gifts', 10*s, pf)
+            return i
+        i += 1
+
+def integer_factorization(n: int) -> [int]:
+    pf = prime_factorization(n)
+    powers = [[base ** e for e in range(exp+1)] for base, exp in pf.items()]
+    return sorted(set(prod(combo) for combo in product(*powers)))
+
+def sum_of_contributing_factors(n: int, delta: int) -> int:
+    factors = integer_factorization(n)
+    return sum(factor for factor in factors if (factor * delta) >= n)
+
+def part2() -> int:
+    i = 1
+    while True:
+        s = sum_of_contributing_factors(i, 50)
+        if s >= n//11:
+            print('house', i, 'gifts', 11*s)
+            return i
+        i += 1
+
+print(part1())
+print(part2())
