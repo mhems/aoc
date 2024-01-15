@@ -50,5 +50,6 @@ def run(cmds, a: int):
             break
         run_cmd(cmds[pc])
 
-n = 0xAAA - 365 * 7
+n = 0xAAA - cmds[2].a * cmds[1].a
+print(n)
 run(cmds, n)
