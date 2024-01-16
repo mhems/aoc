@@ -5,7 +5,8 @@ Cmd = nt('Cmd', ['name', 'arg1', 'arg2'])
 
 with open(argv[1]) as fp:
     lines = fp.readlines()
-initial = lines.pop(0).strip()
+lines.pop(0)
+initial = argv[2]
 
 def parse_cmd(line: str) -> Cmd:
     tokens = line.strip().split()
@@ -33,21 +34,19 @@ def swap_letter(s: str, ch1: str, ch2: str) -> str:
 
 def rotate(s: str, ch: str) -> str:
     index = s.index(ch)
-    if index >= 4:
-        index += 1
-    index += 1
-    return rshift(s, index % len(s))
+    shift = {1: 1, 3: 2, 5: 3, 7: 4, 2: 6, 4: 7, 6: 0, 0: 1}[index]
+    return rshift(s, shift)
 
 def lshift(s: str, amt: int) -> str:
-    return s[amt:] + s[:amt]
-
-def rshift(s: str, amt: int) -> str:
     return s[-amt:] + s[:-amt]
 
+def rshift(s: str, amt: int) -> str:
+    return s[amt:] + s[:amt]
+
 def move(s: str, src_pos: int, dst_pos: int) -> str:
-    src = s[src_pos]
-    list_ = list(s[:src_pos] + s[src_pos+1:])
-    list_.insert(dst_pos, src)
+    src = s[dst_pos]
+    list_ = list(s[:dst_pos] + s[dst_pos+1:])
+    list_.insert(src_pos, src)
     return ''.join(list_)
     
 def reverse(s: str, start_pos: int, stop_pos: int) -> str:
@@ -74,5 +73,5 @@ def mutate(s: str, cmds: [Cmd]) -> str:
         s = run_cmd(s, cmd)
     return s
 
-cmds = [parse_cmd(line.strip()) for line in lines]
+cmds = list(reversed([parse_cmd(line.strip()) for line in lines]))
 print(mutate(initial, cmds))
