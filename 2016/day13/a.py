@@ -61,7 +61,8 @@ def path(prev: {(int, int): [(int, int)]},
 
 def dijkstra(vertices: {(int, int): [(int, int)]},
              src: (int, int),
-             dst: (int, int)) -> int:
+             dst: (int, int) = None,
+             limit: int = None) -> [(int, int)]:
     dist = {}
     prev = {}
     Q = []
@@ -73,8 +74,8 @@ def dijkstra(vertices: {(int, int): [(int, int)]},
     while len(Q) > 0:
         u = min(((vertex, dist[vertex]) for vertex in Q),
                 key=lambda pair: pair[1])[0]
-        if u == dst:
-            return len(path(prev, src, dst))
+        if dst is not None and u == dst:
+            return path(prev, src, dst)
         Q.remove(u)
         for neighbor in vertices[u]:
             if neighbor in Q:
@@ -82,44 +83,15 @@ def dijkstra(vertices: {(int, int): [(int, int)]},
                 if alt < dist[neighbor]:
                     dist[neighbor] = alt
                     prev[neighbor] = u
-    return None
-
-def dfs(vertices: {(int, int): [(int, int)]},
-        src: (int, int),
-        dst: (int, int),
-        discovered: {(int, int): bool} = None) -> int:
-    if discovered is None:
-        discovered = {}
-    discovered[src] = True
-    if src == dst:
-        return (True, [])
-    for neighbor in vertices[src]:
-        if neighbor not in discovered:
-            exists, path = dfs(vertices, neighbor, dst, discovered)
-            if exists:
-                #print(neighbor)
-                return (True, path + [neighbor])
-    return (False, -1)
-
-def bfs(vertices: {(int, int): [(int, int)]},
-        start: (int, int),
-        limit: int,
-        reachable: {(int, int)},
-        n: int = 0):
-    if reachable is None:
-        reachable = set()
-    if n <= limit:
-        reachable.add(start)
-        for neighbor in vertices[start]:
-            bfs(vertices, neighbor, limit, reachable, n + 1)
+    return sum(int(dist[v] <= limit) for v in dist.keys())
 
 grid = make_grid(magic, 30 * (x // 10 + 1), 30 * (y // 10 + 1))
-print(len(grid[0]), len(grid))
 #print_grid(grid, [(x, y)])
 graph = make_graph(grid)
 #print('\n'.join(map(str, graph.items())))
 src, dst = (1+1, 1+1), (x+1, y+1)
-print(dijkstra(graph, src, dst) - 1)
-reachable = set()
-bfs(graph, src, 50, reachable)
-print(len(reachable))
+#print_grid(grid, shortest_path)
+print(len(dijkstra(graph, src, dst)) - 1)
+
+num = dijkstra(graph, src, limit=50)
+print(num)
