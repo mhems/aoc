@@ -37,3 +37,30 @@ def make_grid(key: str) -> [[bool]]:
 key = argv[1]
 grid = make_grid(key)
 print(sum(sum(int(b) for b in row) for row in grid))
+
+def get_neighbors(grid: [[bool]], r: int, c: int) -> [(int, int)]:
+    deltas = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+    poses = [(r + delta[0], c + delta[1]) for delta in deltas]
+    poses = [pos for pos in poses if 0 <= pos[0] < len(grid) and 0 <= pos[1] < len(grid)]
+    return [pos for pos in poses if grid[pos[0]][pos[1]]]
+
+def visit(grid: [[bool]], r: int, c: int, seen: {(int, int)}):
+    neighbors = get_neighbors(grid, r, c)
+    for neighbor in neighbors:
+        if neighbor not in seen:
+            seen.add(neighbor)
+            visit(grid, neighbor[0], neighbor[1], seen)
+
+def num_regions(grid: [[bool]]) -> int:
+    seen = set()
+    count = 0
+    for i, row in enumerate(grid):
+        for j, cell in enumerate(row):
+            if cell:
+                if (i, j) not in seen:
+                    seen.add((i, j))
+                    visit(grid, i, j, seen)
+                    count += 1
+    return count
+
+print(num_regions(grid))
