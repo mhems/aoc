@@ -10,6 +10,7 @@ ops = {
     'banr': lambda a, b: regs[a] & regs[b],
     'bori': lambda a, b: regs[a] | b,
     'borr': lambda a, b: regs[a] | regs[b],
+    'modr': lambda a, b: int(regs[a] % regs[b] == 0),
     'seti': lambda a, _: a,
     'setr': lambda a, _: regs[a],
     'gtir': lambda a, b: int(a > regs[b]),
