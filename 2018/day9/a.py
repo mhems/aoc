@@ -1,4 +1,5 @@
 from sys import argv
+from collections import deque
 
 def parse_line(line: str) -> (int, int):
     tokens = line.strip().split()
@@ -6,27 +7,19 @@ def parse_line(line: str) -> (int, int):
 
 def simulate(num_players: int, num_marbles: int) -> int:
     scores = [0] * num_players
-    ring = [0, 1]
-    current_index = 1
-    for i in range(2, num_marbles + 1):
-        if i % 23 == 0:
-            remove_index = (current_index - 7) % len(ring)
-            scores[(i - 1) % num_players] += i + ring.pop(remove_index)
-            current_index = remove_index
+    ring = deque()
+    for i in range(num_marbles + 1):
+        if i != 0 and i % 23 == 0:
+            ring.rotate(7)
+            scores[i % num_players] += i + ring.popleft()
         else:
-            if current_index == len(ring) - 2:
-                insert_index = len(ring)
-            else:
-                insert_index = (current_index + 2) % len(ring)
-            ring.insert(insert_index, i)
-            current_index = insert_index
-        #print(i, (i-1) % num_players, ring)
+            ring.rotate(-2)
+            ring.appendleft(i)
     return max(scores)
 
 with open(argv[1]) as fp:
     lines = fp.readlines()
 
 pairs = [parse_line(line.strip()) for line in lines]
-
 for num_players, num_marbles in pairs:
     print(simulate(num_players, num_marbles))
