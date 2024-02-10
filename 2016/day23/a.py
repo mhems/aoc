@@ -8,7 +8,7 @@ with open(argv[1]) as fp:
 
 def parse_cmd(s: str) -> Cmd:
     tokens = s.split()
-    if tokens[0] in ('cpy', 'jnz', 'tgl'):
+    if tokens[0] in ('cpy', 'jnz', 'tgl', 'mul'):
         try:
             a = int(tokens[1])
         except ValueError:
@@ -24,7 +24,7 @@ def parse_cmd(s: str) -> Cmd:
         return Cmd(tokens[0], tokens[1], None)
 
 cmds = [parse_cmd(line.strip()) for line in lines]
-regs = {'a': 0, 'b': 0, 'c': 0, 'd': 0}
+regs = {'a': 7, 'b': 0, 'c': 0, 'd': 0}
 pc = 0
 
 def toggle(amt: int):
@@ -37,7 +37,6 @@ def toggle(amt: int):
         elif cmd.op == 'jnz':
             if isinstance(cmd.b, int):
                 new_cmd = Cmd('inv', None, None)
-                print('made instruction', index, 'invalid:', cmd)
             else:
                 new_cmd = Cmd('cpy', cmd.a, cmd.b)
         elif cmd.op == 'cpy':
@@ -52,7 +51,10 @@ def run_cmd(cmd: Cmd):
     val = regs[cmd.a] if isinstance(cmd.a, str) else cmd.a
     if cmd.op == 'jnz':
         if val != 0:
-            pc += cmd.b if isinstance(cmd.b, int) else regs[cmd.b]
+            if isinstance(cmd.b, int):
+                pc += cmd.b
+            else:
+                pc += regs[cmd.b]
         else:
             pc += 1
     elif cmd.op == 'tgl':
@@ -62,6 +64,8 @@ def run_cmd(cmd: Cmd):
             regs[cmd.a] += 1
         elif cmd.op == 'dec':
             regs[cmd.a] -= 1
+        elif cmd.op == 'mul':
+            regs[cmd.a] = regs[cmd.a] * regs[cmd.b]
         else:
             regs[cmd.b] = val
         pc += 1
@@ -73,11 +77,9 @@ def run(cmds):
         run_cmd(cmds[pc])
     return regs['a']
 
-regs['a'] = 7
 print(run(cmds))
 
 pc = 0
 cmds = [parse_cmd(line.strip()) for line in lines]
-regs = {'a': 0, 'b': 0, 'c': 0, 'd': 0}
-regs['a'] = 12
+regs = {'a': 12, 'b': 0, 'c': 0, 'd': 0}
 print(run(cmds))
