@@ -159,6 +159,9 @@ def simulate(goblins: [Unit], elves: [Unit], grid: [[str]], throw=False) -> int:
         units = sorted(goblins + elves, key=lambda unit: unit.pos)
         for unit in units:
             if unit.hp > 0:
+                if len(goblins) == 0 or len(elves) == 0:
+                    hp = sum(sum(unit.hp for unit in row if unit not in (None, '#')) for row in grid)
+                    return hp * round
                 _, target = unit.take_turn(grid, elves if unit.goblin else goblins)
                 if target is not None and target.hp == 0:
                     if target.goblin:
@@ -168,9 +171,6 @@ def simulate(goblins: [Unit], elves: [Unit], grid: [[str]], throw=False) -> int:
                             raise ValueError('elf killed in round ' + round)
                         elves.remove(target)
                     grid[target.pos[0]][target.pos[1]] = None
-        if len(goblins) == 0 or len(elves) == 0:
-            hp = sum(sum(unit.hp for unit in row if unit not in (None, '#')) for row in grid)
-            return hp * round
         round += 1
 
 def simulate_with_extra_damage(lines: [str], damage: int):
