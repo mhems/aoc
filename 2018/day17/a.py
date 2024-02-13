@@ -1,5 +1,6 @@
 from sys import argv
 import re
+from time import time
 
 regex = re.compile(r'.=(\d+), .=(\d+)\.\.(\d+)')
 
@@ -66,14 +67,12 @@ def sand(pos: (int, int), grid: [[str]]) -> bool:
 
 def trace_down(spout: (int, int), grid: [[str]]):
     pos = spout
-    #print_grid(grid)
-    #print('start', pos)
+
     if pos[0] < 0 or pos[0] >= len(grid) or pos[1] < 0 or pos[1] >= len(grid[0]):
         return
     while pos[0] < len(grid) and not clay(pos, grid):
         fill(pos, grid)
         pos = down(pos)
-        #print('going down', pos)
     if pos[0] == len(grid):
         return
     pos = up(pos)
@@ -94,10 +93,11 @@ def trace_down(spout: (int, int), grid: [[str]]):
         fill(pos, grid)
         pos = left(pos)
         fill(pos, grid)
+    else:
+        fill(pos, grid)
     # and recurse
     if pos[1] > 0:
         trace_down(left(pos), grid)
-        #trace_down(pos, grid)
     
     pos = hit
     # go right until we hit clay
@@ -114,22 +114,24 @@ def trace_down(spout: (int, int), grid: [[str]]):
         fill(pos, grid)
         pos = right(pos)
         fill(pos, grid)
+    else:
+        fill(pos, grid)
     # and recurse
     if pos[1] < len(grid[0]) - 1:
         trace_down(right(pos), grid)
-        #trace_down(pos, grid)
 
 with open(argv[1]) as fp:
     lines = fp.readlines()
 
-
-grid, spout = make_grid(lines, 150)
+grid, spout = make_grid(lines, 250)
 #print_grid(grid, spout)
 
+start = time()
 try:
     trace_down((0, spout), grid)
 except ValueError as e:
     raise e
 except:
     pass
+print(time() - start)
 print_grid(grid, spout)
