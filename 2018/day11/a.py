@@ -31,15 +31,15 @@ def find_max_fixed_square(grid: [[int]], n: int, start_x: int = 1, start_y: int 
 def find_max_variable_square(grid: [[int]]) -> (int, int, int):
     max_pos = None
     max_level = 0
-    for y in tqdm(range(1, len(grid))):
-        for x in tqdm(range(1, len(grid))):
-            for n in tqdm(range(250, len(grid) - max(x, y))):
-                level, pos = find_max_fixed_square(grid, n, x, y)
-                if level > max_level:
-                    max_level = level
-                    max_pos = pos, n
-    return max_pos
+    for n in range(2, len(grid)):
+        level, pos = find_max_fixed_square(grid, n)
+        if level == 0:
+            break
+        if level > max_level:
+            max_level = level
+            max_pos = pos, n
+    return max_level, max_pos
 
 grid = make_grid(300, sn)
-print(find_max_fixed_square(grid, 3))
-print(find_max_variable_square(grid))
+print(find_max_fixed_square(grid, 3)[1])
+print(find_max_variable_square(grid)[1])
