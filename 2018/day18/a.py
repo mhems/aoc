@@ -39,13 +39,29 @@ def resource_value(grid: [[str]]) -> int:
     return num_trees * num_lumber
 
 def to_str(grid: [[str]]) -> str:
-    return ''.join(''.join(grid[y][x] for x in range(1, len(grid[0])-1))
+    return '\n'.join(''.join(grid[y][x] for x in range(1, len(grid[0])-1))
                    for y in range(1, len(grid)-1))
 
 def iterate(grid: [[str]], n: int) -> int:
-    for _ in range(n):
+    seen = set(to_str(grid))
+    i = 0
+    start = None
+    repeat_str = None
+    while i < n:
         grid = change(grid)
+        s = to_str(grid)
+        if start is not None and s == repeat_str:
+            cycle_len = i - start
+            i += cycle_len * ((n-i)//cycle_len)
+        if start is None:
+            if s in seen:
+                start = i
+                repeat_str = s
+            else:
+                seen.add(s)
+        i += 1
     return resource_value(grid)
 
 grid = parse_grid(lines)
 print(iterate(grid, 10))
+print(iterate(grid, 1000000000))
