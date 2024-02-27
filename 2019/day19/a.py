@@ -111,25 +111,46 @@ class Program:
                 raise ValueError(op, self.program[self.ip])
 
 def print_grid(grid: [[int]]):
+    i = 0
     for row in grid:
+        print(i, end=' ')
         for cell in row:
             print('.#'[cell], end='')
+        i += 1
         print()
 
-async def make_grid(commands: [int], n: int) -> [[int]]:
+async def sample(commands: [int], pos: (int, int)) -> int:
+    output = []
+    await Program(commands, list(reversed(pos)), output).execute()
+    return output[-1]
+
+async def make_grid(commands: [int], n: int, pos: (int, int) = None) -> [[int]]:
+    if pos is None:
+        pos = (0, 0)
     grid = [[None] * n for _ in range(n)]
     for y in range(n):
         for x in range(n):
-            output = []
-            await Program(commands, [x, y], output).execute()
-            grid[y][x] = output[-1]
+            grid[y][x] = await sample(commands, (pos[0] + y, pos[1] + x))
     return grid
 
-async def sample(commands, n=50):
-    grid = await make_grid(commands, n)
+async def sample_area(commands, n=50, pos=None):
+    grid = await make_grid(commands, n, pos)
     #print_grid(grid)
-    count = sum(sum(cell for cell in row) for row in grid)
-    print(count)
+    return sum(sum(cell for cell in row) for row in grid)
+
+async def find_first_wall_at_y(commands: [int], y: int, x: int) -> int:
+    while await sample(commands, (y, x)) == 0:
+        x += 1
+    return x
+
+async def find_square(commands: [int], n: int) -> int:
+    y = n - 1
+    x = await find_first_wall_at_y(commands, y, 0)
+    while await sample(commands, (y - n + 1, x + n - 1)) == 0:
+        y += 1
+        x = await find_first_wall_at_y(commands, y, x)
+    return x * 10000 + y - n + 1
 
 commands = [int(token) for token in open(argv[1]).read().strip().split(',')]
-aio.run(sample(commands))
+print(aio.run(sample_area(commands)))
+print(aio.run(find_square(commands, 100)))
