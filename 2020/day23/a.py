@@ -1,11 +1,9 @@
 from sys import argv
 
 def rotate(elements: [int], n: int) -> [int]:
-    if n > 0:
-        return elements[n:] + elements[:n]
-    elif n < 0:
-        return elements[:n] + elements[-n:]
-    return elements
+    if n == 0:
+        return elements
+    return elements[n:] + elements[:n]
 
 def play(labels: [int], n: int = 100) -> int:
     pos = 0
