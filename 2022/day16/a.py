@@ -30,12 +30,13 @@ def all_pairs_distances(graph: {str: (int, {str})}, valves: {str}) -> {(str, str
         distances[(v, u)] = distances[(u, v)]
     return distances
 
-def psearch(graph: {str: (int, int)}, valves: {str}, distances: {(str, str): int}, time: int, elephant: bool) -> int:
+def psearch(graph: {str: (int, int)}, valves: {str}, distances: {(str, str): int}, time: int) -> int:
+    q = deque()
     def enqueue(cur: str, next: str, visited: [int], initial_pressure: int, remaining_valves: {int}, remaining_time: int):
+        nonlocal q, distances, graph
         left = distances[(cur, next)] + 1
         minute = remaining_time - left
         q.append((next, list(visited) + [next], set(remaining_valves) - {next}, initial_pressure + graph[next][0] * minute, minute))
-    q = deque()
     biggest = 0
     for valve in valves:
         enqueue('AA', valve, [], 0, valves, time)
@@ -49,11 +50,10 @@ def psearch(graph: {str: (int, int)}, valves: {str}, distances: {(str, str): int
             enqueue(cur, v, visited, pressure, todo, togo)
     return biggest
 
-def find_max_pressure(graph: {str: (int, {str})}, time: int = 30, elephant: bool = False) -> int:
+def find_max_pressure(graph: {str: (int, {str})}, time: int = 30) -> int:
     valves = {v for v, (rate, _) in graph.items() if rate > 0}
     distances = all_pairs_distances(graph, valves | {'AA'})
-    return psearch(graph, valves, distances, time, elephant)
+    return psearch(graph, valves, distances, time)
 
 graph = parse()
 print(find_max_pressure(graph))
-print(find_max_pressure(graph, 26, True))
