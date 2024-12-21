@@ -37,8 +37,32 @@ def simulate(regs: [int], prog: [int]) -> str:
             pc += 2
     return ','.join(map(str, output))
 
+def straight(A: int) -> str:
+    output = []
+    while A != 0:
+        masked = A & 7
+        left = masked ^ 4
+        exp = masked ^ 1
+        right = A >> exp
+        answer = (left ^ right) & 7
+        output.append(answer)
+        A >>= 3
+    return output
+
+def find(prog: [int]) -> int:
+    num = 0
+    for num_matched in range(1, len(prog) + 1):
+        num *= 8
+        i = 0
+        while True:
+           if straight(num + i) == prog[-num_matched:]:
+               num += i
+               break
+           i += 1
+    return num
+
 regs, prog = open(argv[1]).read().split('\n\n')
 regs = [int(line.strip().split()[-1]) for line in regs.strip().split('\n')]
 prog = [int(e) for e in prog.strip().split()[-1].split(',')]
 print(simulate(regs, prog))
-print(simulate([int(argv[2]), 0, 0], prog))
+print(find(prog))
