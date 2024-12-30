@@ -1,17 +1,24 @@
 from sys import argv
+from functools import cache
+from collections import Counter, defaultdict
 
-def simulate(nums: [int], days: int, length: int = 7) -> int:
-    for _ in range(days):
-        new = 0
-        for i in range(len(nums)):
-            if nums[i] == 0:
-                nums[i] = length - 1
-                new += 1
-            else:
-                nums[i] -= 1
-        for _ in range(new):
-            nums.append(length + 1)
-    return len(nums)
+@cache
+def one_day(n: int) -> [int]:
+    if n == 0:
+        return [6, 8]
+    return [n-1]
+
+def simulate(nums: [int], n: int) -> int:
+    nums = Counter(nums)
+    for _ in range(n):
+        new_nums = defaultdict(int)
+        while nums:
+            num, count = nums.popitem()
+            for e in one_day(num):
+                new_nums[e] += count
+        nums = new_nums
+    return sum(nums.values())
 
 nums = [int(token) for token in open(argv[1]).read().strip().split(',')]
 print(simulate(nums, 80))
+print(simulate(nums, 256))
