@@ -1,8 +1,10 @@
 from sys import argv
 from collections import deque
+from PIL import Image
+from random import randint
 
 def neighbors(pos: (int, int), Y: int = None, X: int = None) -> [(int, int)]:
-    deltas = [(-1, 0), (0, -1), (0, 1), (1, 0)]
+    deltas = [(-1, 0), (0, 1), (1, 0), (0, -1)]
     return [(pos[0] + dy, pos[1] + dx) for dy, dx in deltas
             if (Y is None or 0 <= pos[0] + dy < Y) and (X is None or 0 <= pos[1] + dx < X)]
 
@@ -27,8 +29,7 @@ def flood_fills(garden: [[str]]) -> [{(int, int)}]:
         for x, _ in enumerate(row):
             if (y, x) not in visited:
                 region = flood(garden, (y, x))
-                for plant in region:
-                    visited.add(plant)
+                visited.update(region)
                 regions.append(region)
     return regions
 
@@ -44,32 +45,35 @@ def print_grid(grid: [[bool]]):
             print('#' if cell else '.', end='')
         print()
 
-def num_sides(region: {(int, int)}) -> int:
-    if len(region) < 3:
-        return 4
-    # num turns + 1
-    print(region)
-    top_left = min(region)
-    xs = {x for _, x in region}
-    ys = {y for y, _ in region}
-    minX, maxX = min(xs) - 1, max(xs) + 1
-    minY, maxY = min(ys) - 1, max(ys) + 1
-    exterior = set()
-    grid = []
-    for _ in range(maxY - minY + 1):
-        grid.append([False] * (maxX - minX + 1))
+def num_corners(region: {(int, int)}) -> int:
+    num = 0
     for y, x in region:
-        grid[y-minY][x-minX] = True
-    print_grid(grid)
-    return 4
+        for dy in (-1, 1):
+            for dx in (-1, 1):
+                p1_in = (y+dy, x) in region
+                p2_in = (y, x+dx) in region
+                if not p1_in and not p2_in:
+                    num += 1
+                elif p1_in and p2_in and (y+dy, x+dx) not in region:
+                    num += 1
+    return num
 
 def price(region: {(int, int)}) -> int:
     return area(region) * perimeter(region)
 
 def bulk_price(region: {(int, int)}) -> int:
-    return area(region) * num_sides(region)
+    return area(region) * num_corners(region)
+
+def draw(regions: [{(int, int)}], Y: int, X: int):
+    image = Image.new('RGB', (X, Y))
+    for region in regions:
+        color = randint(0, 255), randint(0, 255), randint(0, 255)
+        for pos in region:
+            image.putpixel(pos, color)
+    image.save('garden.png')
 
 garden = [list(line.strip()) for line in open(argv[1]).readlines()]
 regions = flood_fills(garden)
+draw(regions, len(garden), len(garden[0]))
 print(sum(map(price, regions)))
 print(sum(map(bulk_price, regions)))
