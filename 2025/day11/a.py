@@ -5,14 +5,14 @@ adj_list = dict((lambda a, b: (a, set(b.split()))) (*line.rstrip().split(': '))
                 for line in open(sys.argv[1]).readlines())
 
 def make_dot_file():
-    print("digraph G {")
-    for node, neighbors in adj_list:
-        for neighbor in neighbors:
-            print(f"  {node} -> {neighbor};")
-    print("}")
+    with open(sys.argv[1].split('.')[0] + '.dot', 'w') as fp:
+        fp.write("digraph G {\n")
+        for node, neighbors in adj_list:
+            for neighbor in neighbors:
+                fp.write(f"  {node} -> {neighbor};\n")
+        fp.write("}\n")
 
 # make_dot_file()
-# sys.exit(0)
 
 G = nx.DiGraph(adj_list)
 assert nx.is_directed_acyclic_graph(G)
