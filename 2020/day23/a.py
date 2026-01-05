@@ -1,34 +1,63 @@
 from sys import argv
+from tqdm import tqdm
 
-def rotate(elements: [int], n: int) -> [int]:
-    if n == 0:
-        return elements
-    return elements[n:] + elements[:n]
+class LinkedList:
+    class LinkedListNode:
+        def __init__(self, value):
+            self.value = value
+        def __iter__(node):
+            start = node.value
+            cur = node
+            while True:
+                yield cur.value
+                cur = cur.next
+                if cur.value == start:
+                    break
+    
+    def __init__(self, iterable):
+        contents = list(iterable)
+        N = len(contents)
+        node_list = [LinkedList.LinkedListNode(value) for value in contents]
+        for i, node in enumerate(node_list):
+            node.prev = node_list[(i-1) % N]
+            node.next = node_list[(i+1) % N]
+        self.head = node_list[0]
+        self.lookup = {node.value: node for node in node_list}
+    def __iter__(self):
+        yield from self.head
 
-def play(labels: [int], n: int = 100) -> int:
-    pos = 0
-    N = len(labels)
-    for _ in range(n):
-        cur = labels[pos]
-        picked = labels[(pos + 1): min(pos + 1 + 3, N)]
-        if len(picked) < 3:
-            picked += labels[0: 3 - len(picked)]
-        for p in picked:
-            labels.remove(p)
-        dest = cur - 1
-        if dest == 0:
-            dest = 9
-        while dest in picked:
-            dest -= 1
-            if dest == 0:
-                dest = 9
-        index = labels.index(dest)
-        for i, e in enumerate(picked):
-            labels.insert(index + i + 1, e)
-        labels = rotate(labels, labels.index(cur) - pos)
-        pos = (pos + 1) % N
-    index = labels.index(1)
-    return ''.join(map(str, labels[index+1:] + labels[:index]))
+def play(labels, n: int = 100):
+    N = max(labels)
+    wrapping_decrement = lambda x: x-1 if x > 1 else N
+    labels = LinkedList(labels)    
+    cur = labels.head
+    for _ in tqdm(range(n)):
+        a = cur.next
+        b = a.next
+        c = b.next
+        d = c.next
 
-labeling = [int(n) for n in argv[1]]
-print(play(labeling))
+        dest_value = wrapping_decrement(cur.value)
+        while dest_value in (a.value, b.value, c.value):
+            dest_value = wrapping_decrement(dest_value)
+        
+        cur.next = d
+        d.prev = cur
+        
+        dest = labels.lookup[dest_value]
+        tmp = dest.next
+        dest.next = a
+        a.prev = dest
+        
+        c.next = tmp
+        tmp.prev = c
+
+        cur = cur.next
+    return labels.lookup[1]
+
+labeling = list(int(n) for n in open(argv[1]).read().strip())
+print(''.join(map(str, play(labeling)))[1:])
+
+labeling.extend(range(max(labeling) + 1, 1_000_001))
+one = play(labeling, 10_000_000)
+print(one.next.value * one.next.next.value)
