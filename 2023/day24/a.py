@@ -1,40 +1,16 @@
 from sys import argv
 from itertools import combinations
+import numpy as np
+import sympy as sp
 
-if argv[1][0] == 'e':
-    lo, hi = 7, 27
-else:
-    lo, hi = 200000000000000, 400000000000000
-
-def add(p1: tuple[int, int], p2: tuple[int, int]) -> tuple[int, int]:
-    return tuple(a+b for a, b in zip(p1, p2))
-
-def diff(p1: tuple[int, int], p2: tuple[int, int]) -> tuple[int, int]:
-    return tuple(a-b for a, b in zip(p1, p2))
-
-def mul(p1: tuple[int, int], n: int) -> tuple[int, int]:
-    x, y = p1
-    return x*n, y*n
-
-def cross(p1: tuple[int, int], p2: tuple[int, int]) -> int:
-    x1, y1 = p1
-    x2, y2 = p2
-    return x1*y2 - x2*y1
-
-def sign(n: float) -> int:
-    if n == 0:
-        return 0
-    return 1 if n > 0 else -1
-
-def orient(a: tuple[int, int], b: tuple[int, int], c: tuple[int, int]) -> int:
-    return sign(cross(diff(b, a), diff(c, a)))
-
-def lines_intersect(a: tuple[int, int], b: tuple[int, int], c: tuple[int, int], d: tuple[int, int]) -> bool:
-    o1, o2, o3, o4 = [orient(e1, e2, p) for e1, e2, p in ((a, b, c), (a, b, d), (c, d, a), (c, d, b))]
+def lines_intersect(a, b, c, d) -> bool:
+    cross = lambda a, b: a[0] * b[1] - a[1] * b[0]
+    o1, o2, o3, o4 = [np.sign(cross(e2 - e1, p - e1)) for e1, e2, p in ((a, b, c), (a, b, d), (c, d, a), (c, d, b))]
     return o1 * o2 < 0 and o3 * o4 < 0
 
-def rays_intersect(a, b) -> bool:
-    def clip(p: tuple[int, int], d: tuple[int, int]):
+def rays_intersect(a, b, bounds) -> bool:
+    lo, hi = bounds
+    def clip(p, d):
         x1 = (lo - p[0]) / d[0]
         x2 = (hi - p[0]) / d[0]
         y1 = (lo - p[1]) / d[1]
@@ -56,14 +32,48 @@ def rays_intersect(a, b) -> bool:
         return False
     tmina, tmaxa = ta
     tminb, tmaxb = tb
-    return lines_intersect(add(P, mul(r, tmina)), add(P, mul(r, tmaxa)),
-                           add(Q, mul(s, tminb)), add(Q, mul(s, tmaxb)))
-    
-def num_intersections(rays: list[tuple[tuple[int, int], tuple[int, int]]]) -> int:
-    return sum(int(rays_intersect(((x1, y1), (dx1, dy1)), ((x2, y2), (dx2, dy2)))) for ((x1, y1, _), (dx1, dy1, _)), ((x2, y2, _), (dx2, dy2, _)) in combinations(rays, 2))
+    return lines_intersect(P + r * tmina, P + r * tmaxa, Q + s * tminb, Q + s * tmaxb)
 
-def parse(line) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
-    return tuple(tuple(int(e) for e in vector.split(', ')) for vector in line.strip().split('@'))
+def num_intersections(rays, bounds) -> int:
+    trio = set()
 
-rays = [parse(line) for line in open(argv[1]).readlines()]
-print(num_intersections(rays))
+    def add_if_not_parallel(p, d):
+        if all(np.cross(d, d_other).any() for _, d_other in trio):
+            trio.add((tuple(p), tuple(d)))
+
+    num = 0
+    for r1, r2 in combinations(rays, 2):
+        p1, d1 = r1
+        p2, d2 = r2
+        if rays_intersect((p1[:-1], d1[:-1]), (p2[:-1], d2[:-1]), bounds):
+            num += 1
+        if len(trio) < 3 and np.cross(d1, d2).any():
+            add_if_not_parallel(p1, d1)
+            add_if_not_parallel(p2, d2)
+    a, b, c, *_ = trio
+    return num, solve(a, b, c)
+
+def solve(a, b, c) -> int:
+    (h1p, h1v), (h2p, h2v), (h3p, h3v) = ((np.array(p), np.array(d)) for p, d in (a, b, c))
+    dv12 = h1v - h2v
+    dp12 = h1p - h2p
+    dv13 = h1v - h3v
+    dp13 = h1p - h3p
+    C12 = np.cross(h2p, h2v) - np.cross(h1p, h1v)
+    C13 = np.cross(h3p, h3v) - np.cross(h1p, h1v)
+    system = sp.Matrix([
+        [0, dv12[2], -dv12[1], 0, dp12[2], -dp12[1], -C12[0]],
+        [-dv12[2], 0, dv12[0], -dp12[2], 0, dp12[0], -C12[1]],
+        [dv12[1], -dv12[0], 0, dp12[1], -dp12[0], 0, -C12[2]],
+        [0, dv13[2], -dv13[1], 0, dp13[2], -dp13[1], -C13[0]],
+        [-dv13[2], 0, dv13[0], -dp13[2], 0, dp13[0], -C13[1]],
+        [dv13[1], -dv13[0], 0, dp13[1], -dp13[0], 0, -C13[2]]
+    ])
+    rref, pivots = system.rref()
+    assert len(pivots) == 6
+    return rref[6] + rref[13] + rref[20]
+
+bounds = (7, 27) if argv[1][0] == 'e' else (2e14, 4e14)
+rays = [tuple(np.array([int(e) for e in vector.split(', ')], dtype=int) for vector in line.strip().split('@'))
+        for line in open(argv[1]).readlines()]
+print('\n'.join(map(str, num_intersections(rays, bounds))))
