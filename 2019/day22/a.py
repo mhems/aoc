@@ -1,38 +1,55 @@
 from sys import argv
 
-def reverse(deck: [int]) -> [int]:
-    return list(reversed(deck))
+class Deck:
+    def __init__(self, n: int):
+        self.n = n
+        self.a = 1
+        self.b = 0
+    def rotate(self, amt: int):
+        self.b = (self.b - amt) % self.n
+    def increment(self, amt: int):
+        self.a = (self.a * amt) % self.n
+        self.b = (self.b * amt) % self.n
+    def reverse(self):
+        self.a = -self.a % self.n
+        self.b = (-self.b - 1) % self.n
 
-def cut(deck: [int], n: int) -> [int]:
-    return deck[n:] + deck[:n]
+k = 101_741_582_076_661
+d1 = Deck(10_007)
+d2 = Deck(119_315_717_514_047)
 
-def deal(deck: [int], n: int) -> [int]:
-    new_deck = [None] * len(deck)
-    i = 0
-    for e in deck:
-        new_deck[i % len(deck)] = e
-        i += n
-    return new_deck
+for line in open(argv[1]).readlines():
+    tokens = line.strip().split()
+    if tokens[0] == 'cut':
+        amt = int(tokens[-1])
+        d1.rotate(amt)
+        d2.rotate(amt)
+    elif tokens[1] == 'with':
+        amt = int(tokens[-1])
+        d1.increment(amt)
+        d2.increment(amt)
+    else:
+        d1.reverse()
+        d2.reverse()
 
-def shuffle(commands: [str], deck=None) -> [int]:
-    if deck is None:
-        deck = list(range(10007))
-    for command in commands:
-        tokens = command.split()
-        if tokens[0] == 'cut':
-            deck = cut(deck, int(tokens[-1]))
-        elif tokens[1] == 'with':
-            deck = deal(deck, int(tokens[-1]))
-        else:
-            deck = reverse(deck)
-    return deck
+def evaluate(a: int, b: int, n: int, x: int) -> int:
+    return (a*x + b) % n
 
-def long_shuffle(commands: [str], n=101741582076661, pos=2020):
-    deck = list(range(119315717514047))
-    for i in range(n):
-        deck = shuffle(commands, deck)
-    return deck
+def inverse(b, p) -> int:
+    return pow(b, p-2, p)
 
-commands = [line.strip() for line in open(argv[1]).readlines()]
-print(shuffle(commands).index(2019))
-print(long_shuffle(commands)[2020])
+def exponentiate(a, b, k, p) -> tuple[int, int]:
+    coeff = pow(a, k, p)
+    const = (b * (coeff-1) * inverse(a-1, p)) % p
+    return coeff, const
+
+def invert(a, b, p):
+    a_inv = inverse(a, p)
+    b *= -a_inv
+    return a_inv, b
+
+print(evaluate(d1.a, d1.b, d1.n, 2019))
+
+a, b = exponentiate(d2.a, d2.b, k, d2.n)
+a, b = invert(a, b, d2.n)
+print(evaluate(a, b, d2.n, 2020))
