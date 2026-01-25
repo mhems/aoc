@@ -1,117 +1,98 @@
 from sys import argv
-import heapq
+from collections import deque
+from heapq import heappush, heappop
+from functools import cache
 
-def parse_grid() -> ([[str]], {str: (int, int)}):
-    with open(argv[1]) as fp:
-        lines = [list(line.strip()) for line in fp.readlines()]
-    objects = {}
+def parse_grid() -> tuple[list[list[str]], dict[str, tuple[int, int]]]:
+    lines = [list(line.strip()) for line in open(argv[1]).readlines()]
+    keys = {}
     for y, row in enumerate(lines):
         for x, cell in enumerate(row):
-            if cell not in ('#', '.'):
-                objects[cell] = (y, x)
-    return lines, objects
+            if cell == '@' or cell.islower():
+                keys[cell] = (y, x)
+    return lines, keys
 
-def is_door(grid: [[str]], value) -> bool:
-    if isinstance(value, tuple):
-        return is_door(None, grid[value[0]][value[1]])
-    return 'A' <= value <= 'Z'
+def neighbors(grid: list[list[str]], y: int, x: int):
+    for dy, dx in ((-1, 0), (0, -1), (0, 1), (1, 0)):
+        if grid[y+dy][x+dx] != '#':
+            yield (y + dy, dx + x)
 
-def is_key(grid: [[str]], value) -> bool:
-    if isinstance(value, tuple):
-        return is_key(None, grid[value[0]][value[1]])
-    return 'a' <= value <= 'z'
-
-def is_blocked(grid: [[str]], pos: (int, int), keys: {int}) -> bool:
-    cell = grid[pos[0]][pos[1]]
-    if cell == '#':
-        return True
-    if cell == '.':
-        return False
-    return is_door(grid, pos) and cell.lower() not in keys
-
-neighbors = {}
-def vacant_neighbors(grid: [[str]], pos: (int, int), keys: {int}) -> [(int, int)]:
-    global neighbors
-    if pos not in neighbors:  
-        legal_positions = []
-        if pos[0] > 0:
-            legal_positions.append((pos[0] -1, pos[1]))
-        if pos[0] < len(grid) - 1:
-            legal_positions.append((pos[0] + 1, pos[1]))
-        if pos[1] > 0:
-            legal_positions.append((pos[0], pos[1] - 1))
-        if pos[1] < len(grid[0]) - 1:
-            legal_positions.append((pos[0], pos[1] + 1))
-        neighbors[pos] = legal_positions
-    legal_positions = neighbors[pos]
-    return [(y, x) for y, x in legal_positions if not is_blocked(grid, (y, x), keys)]
-
-def gated_bfs(grid: [[str]], num_keys: int, start: (int, int)) -> int:
-    q = []
-    heapq.heappush(q, (0, start, set(), 0))
+def walk(grid: list[list[str]], start: tuple[int, int]) -> dict[str, tuple[int, int]]:
+    edges = dict()
     visited = set()
-    visited.add((start, tuple()))
-    max_keys = 0
-    while len(q) > 0:
-        _, pos, keys, steps = heapq.heappop(q)
-        if is_key(grid, pos):
-            keys.add(grid[pos[0]][pos[1]])
-        if len(keys) == num_keys:
-            return steps
-        if len(keys) > max_keys:
-            max_keys = len(keys)
-            print('found', max_keys, len(q), len(visited))
-        for neighbor in vacant_neighbors(grid, pos, keys):
-            state = (neighbor, tuple(keys))
-            if state not in visited:
-                visited.add(state)
-                heapq.heappush(q, (steps - len(keys), neighbor, set(keys), steps + 1))
+    q = deque([(start, 0, 0)])
+    while q:
+        (y, x), dist, doors = q.popleft()
+        visited.add((y, x))
+        cur = grid[y][x]
+        if cur.islower() and dist != 0:
+            edges[cur] = dist, doors
+        for n in neighbors(grid, y, x):
+            if n not in visited:
+                next = grid[n[0]][n[1]]
+                q.append((n, dist + 1, doors | (to_bit(next) if next.isupper() else 0)))
+    return edges
 
-def quadsect(grid: [[str]], start: (int, int)) -> [[str]]:
+@cache
+def to_bit(key: str) -> int:
+    return 1 << (ord(key.lower()) - ord('a'))
+
+def solve(cliques) -> int:
+    q = []
+    targets = []
+    total = 0
+    N = len(cliques)
+    for i, clique in enumerate(cliques):
+        mask = 0
+        for v in clique.keys():
+            if v != '@':
+                distance, doors = clique['@'][v]
+                mask |= to_bit(v)
+                if doors == 0:
+                    positions = ['@'] * N
+                    positions[i] = v
+                    heappush(q, (distance, tuple(positions), to_bit(v)))
+        total |= mask
+        targets.append(mask)
+    visited = dict()
+    while q:
+        num_steps, positions, collected = heappop(q)
+        if num_steps >= visited.get((positions, collected), 1e6):
+            continue
+        visited[(positions, collected)] = num_steps
+        if collected == total:
+            return num_steps
+        for i, (position, clique, target) in enumerate(zip(positions, cliques, targets)):
+            if target & collected == target:
+                continue
+            for v, (w, required) in clique[position].items():
+                if v != '@' and to_bit(v) & collected == 0:
+                    if required & collected == required:
+                        new_positions = list(positions)
+                        new_positions[i] = v
+                        heappush(q, (num_steps + w, tuple(new_positions), collected | to_bit(v)))
+
+def quadsect(grid: list[list[str]], start: tuple[int, int]) -> list[tuple[int, int]]:
     y, x = start
     grid[y-1][x-1] = '@'
     grid[y-1][x] = '#'
     grid[y-1][x+1] = '@'
-    grid[y][x] = '#'
     grid[y][x-1] = '#'
+    grid[y][x] = '#'
     grid[y][x+1] = '#'
     grid[y+1][x-1] = '@'
     grid[y+1][x] = '#'
     grid[y+1][x+1] = '@'
-    return grid, [(y-1, x-1), (y-1, x+1), (y+1, x-1), (y+1, x+1)]    
+    return [(y-1, x-1), (y-1, x+1), (y+1, x-1), (y+1, x+1)]    
 
-def quad_bfs(grid: [[str]], num_keys: int, starts: [(int, int)]) -> int:
-    q = []
-    heapq.heappush(q, (0, starts, set(), 0))
-    visited = set()
-    visited.add((tuple(starts), tuple()))
-    max_keys = 0
-    while len(q) > 0:
-        _, positions, keys, steps = heapq.heappop(q)
-        for pos in positions:
-            if is_key(grid, pos):
-                keys.add(grid[pos[0]][pos[1]])
-        if len(keys) == num_keys:
-            return steps
-        if len(keys) > max_keys:
-            max_keys = len(keys)
-            print('found', max_keys, len(q), len(visited))
-        for i, pos in enumerate(positions):
-            for neighbor in vacant_neighbors(grid, pos, keys):
-                new_positions = list(positions)
-                new_positions[i] = neighbor
-                state = (tuple(new_positions), tuple(keys))
-                if state not in visited:
-                    visited.add(state)
-                    heapq.heappush(q,
-                                   (steps - len(keys),
-                                    new_positions,
-                                    set(keys),
-                                    steps + 1))
+grid, keys = parse_grid()
+clique = {key: walk(grid, pos) for key, pos in keys.items()}
+print(solve([clique]))
 
-grid, objects = parse_grid()
-start = objects.pop('@')
-num_keys = sum(int(is_key(None, object)) for object in objects.keys())
-#print(gated_bfs(grid, num_keys, start))
-grid, starts = quadsect(grid, start)
-print(quad_bfs(grid, num_keys, starts))
+starts = quadsect(grid, keys['@'])
+quads = [walk(grid, start) for start in starts]
+cliques = [{'@': keyset} for keyset in quads]
+for keyset, clique in zip(quads, cliques):
+    for key in keyset.keys():
+        clique[key] = walk(grid, keys[key])
+print(solve(cliques))
