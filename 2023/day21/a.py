@@ -1,11 +1,5 @@
 from sys import argv
 
-def find_start(grid: [[str]]) -> (int, int):
-    for y, row in enumerate(grid):
-        for x, cell in enumerate(row):
-            if cell == 'S':
-                return (y, x)
-
 def vacant_neighbors(grid: [[str]], pos: (int, int)) -> [(int, int)]:
     neighbors = []
     if pos[0] < len(grid) - 1:
@@ -25,14 +19,41 @@ def reachable_from(grid: [[str]], positions: [(int, int)]) -> [(int, int)]:
             reachable.add(neighbor)
     return reachable
 
-def num_reachable(grid: [[str]], start: (int, int), n: int) -> int:
-    positions = [start]
-    for _ in range(n):
+def reachable(grid: [[str]], start: (int, int), ns: int) -> [int]:
+    positions = {start}
+    lengths = []
+    singular = False
+    if isinstance(ns, int):
+        ns = [ns]
+        singular = True
+    for i in range(max(ns)):
         positions = reachable_from(grid, positions)
-    return len(positions)
+        if i + 1 in ns:
+            lengths.append(len(positions))
+    return lengths[0] if singular else lengths
 
-with open(argv[1]) as fp:
-    grid = [list(line.strip()) for line in fp.readlines()]
+grid = [list(line.strip()) for line in open(argv[1]).readlines()]
+D = len(grid)
+d = D//2
+start = d, d
 
-start = find_start(grid)
-print(num_reachable(grid, start, 64))
+print(reachable(grid, start, 64))
+
+num_steps = 26501365
+radius = (num_steps - d) // D
+radius_complete = radius - 1
+B, A = reachable(grid, start, [2*D, 2*D+1])
+total = A * (radius_complete**2) + B * (radius**2)
+
+# the below is with credit to https://www.youtube.com/watch?v=9UOMZSL0JTg
+
+starts = [(0, 0), (0, D-1), (D-1, 0), (D-1, D-1)]
+for start in starts:
+    total += radius_complete * reachable(grid, start, D+d-1)
+    total += radius * reachable(grid, start, d-1)
+
+corners = [(D-1, d), (d, 0), (0, d), (d, D-1)]
+for corner in corners:
+    total += reachable(grid, corner, D-1)
+    
+print(total)
