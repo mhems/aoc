@@ -2,9 +2,9 @@ from sys import argv
 from collections import defaultdict
 from collections import deque
 
+lines = [list(line.rstrip()) for line in open(argv[1]).readlines()]
+
 def parse() -> ([[str]], {str: [(int, int)]}):
-    with open(argv[1]) as fp:
-        lines = [list(line.rstrip()) for line in fp.readlines()]
     grid = []
     portals = defaultdict(list)
     for x, ch in enumerate(lines[0]):
@@ -87,7 +87,91 @@ def portal_bfs(grid: [[str]],
                     visited.add((portal, portals_taken))
                     q.append((other, portals_taken, steps + 1))
 
+def bfs(grid, start, end) -> int:
+    q = deque([(start, 0)])
+    visited = {start}
+    while q:
+        cur, d = q.popleft()
+        visited.add(cur)
+        if end == cur:
+            return d
+        for n in vacant_neighbors(grid, cur):
+            if n not in visited:
+                q.append((n, d + 1))
+    return None
+
+def condense(grid, portals, start, stop):
+    H, W = len(grid), len(grid[0])
+    def is_outer(pos):
+        y, x = pos
+        return y == 0 or y == H-1 or x == 0 or x == W-1
+    nodes = {start: 'AA', stop: 'ZZ'}
+    inners, outers = set(), set()
+    adj_list = defaultdict(dict)
+    for k, v in portals.items():
+        for e in v:
+            nodes[e] = k
+        if len(v) > 1:
+            inner, outer = sorted(v, key=lambda pos: int(is_outer(pos)))
+            inners.add(inner)
+            outers.add(outer)
+        adj_list[f'outer-{k}'] = {f'inner-{k}': 1}
+        adj_list[f'inner-{k}'] = {f'outer-{k}': 1}
+    def qualify(label, pos):
+        if pos in inners:
+            return f'inner-{label}'
+        else:
+            return f'outer-{label}'
+    for pos1, label1 in nodes.items():
+        for pos2, label2 in nodes.items():
+            if pos1 != pos2:
+                d = bfs(grid, pos1, pos2)
+                if d:
+                    l1, l2 = qualify(label1, pos1), qualify(label2, pos2)
+                    adj_list[l1][l2] = d
+                    adj_list[l2][l1] = d
+    return dict(adj_list)
+
 grid, portals = parse()
 start, stop = portals.pop('AA')[0], portals.pop('ZZ')[0]
 reverse_map = reverse(portals)
 print(portal_bfs(grid, reverse_map, start, stop))
+
+adj_list = condense(grid, portals, start, stop)
+
+def recursive_bfs(adj_list: dict[str, dict[str, int]]) -> int:
+    q = deque([('outer-AA', 0, 0)])
+    visited = set()
+    while q:
+        cur, depth, distance = q.popleft()
+        key = cur, depth
+        if key in visited:
+            continue
+        visited.add(key)
+        if depth == 0 and cur == 'outer-ZZ':
+            return distance
+        cur_outer = cur.startswith('outer')
+        for v, w in adj_list[cur].items():
+            if depth != 0 and v == 'outer-ZZ':
+                continue
+            neighbor_outer = v.startswith('outer')
+            if cur[-2:] == v[-2:]:
+                if cur_outer and not neighbor_outer:
+                    q.append((v, depth - 1, distance + 1))
+                else:
+                    q.append((v, depth + 1, distance + 1))
+            else:
+                if depth == 0 and neighbor_outer and v[-2:] != 'ZZ':
+                    continue
+                q.append((v, depth, distance + w))
+
+def plot():
+    import networkx as nx
+    G = nx.Graph()
+    for u, d in adj_list.items():
+        for v, w in d.items():
+            G.add_edge(u, v, weight=w)
+    nx.drawing.nx_pydot.write_dot(G, argv[1].split('.')[0] + ".dot")
+#plot()
+
+print(recursive_bfs(adj_list))
